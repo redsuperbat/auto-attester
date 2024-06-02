@@ -1,0 +1,19 @@
+{
+  "name": "auto-attester",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env --import tsx/esm index.ts",
+    "prod": "node --import tsx/esm index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "zx": "^8.1.2"
+  }
+}
