@@ -171,3 +171,4 @@ const headers = createHeaders(sessionId);
 await authenticate(headers);
 await authorizePayments(headers);
 await authorizeSalaries(headers);
+console.log("finished! :) ");
