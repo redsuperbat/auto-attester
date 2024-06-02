@@ -17,6 +17,12 @@ terraform {
 }
 
 
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
+
+
+
 variable "image_tag" {
   type = string
 }
@@ -29,16 +35,16 @@ variable "password" {
   type = string
 }
 
-resource "kubernetes_namespace_v1" "nordic_wellness_booker_ns" {
+resource "kubernetes_namespace_v1" "ns" {
   metadata {
     name = local.name
   }
 }
 
-resource "kubernetes_cron_job_v1" "nordic_wellness_booker_job" {
+resource "kubernetes_cron_job_v1" "cron_job" {
   metadata {
     name      = local.name
-    namespace = local.namespace
+    namespace = kubernetes_namespace_v1.ns.metadata[0].name
   }
 
 

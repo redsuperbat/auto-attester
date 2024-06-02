@@ -67,16 +67,17 @@ const createHeaders = (sessionId: string) =>
   });
 
 const authenticate = async (headers: Headers) => {
-  console.log("authenticating with username + password");
+  const body = {
+    password: process.env.PASSWORD,
+    username: process.env.USERNAME,
+  };
+  console.log("authenticating with username + password", body);
   headers.append("Content-Type", "application/json");
   const url = "https://portal.simpleko.se/api/auth/login";
   const response = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      password: process.env.PASSWORD,
-      username: process.env.USERNAME,
-    }),
+    body: JSON.stringify(body),
   });
   await assertResponse(response);
 };
