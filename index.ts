@@ -6,8 +6,10 @@ async function assertResponse(response: Response) {
   if (!response.ok) {
     console.error("Request", response.url, "failed");
     console.error(await response.text());
+    console.error(Object.fromEntries(response.headers.entries()));
     process.exit(1);
   }
+  return response.json();
 }
 
 async function getSessionid() {
@@ -45,13 +47,13 @@ async function getSessionid() {
   return sessionId;
 }
 
-const createHeaders = (sessionId: string) =>
+const createHeaders = (Cookie: string) =>
   new Headers({
     Accept: "application/json, text/plain, */*",
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
     Connection: "keep-alive",
-    Cookie: `PHPSESSID=${sessionId}`,
+    Cookie,
     DNT: "1",
     Host: "portal.simpleko.se",
     Origin: "https://portal.simpleko.se",
@@ -80,17 +82,60 @@ const authenticate = async (headers: Headers) => {
     body: JSON.stringify(body),
   });
   await assertResponse(response);
+  return createHeaders(response.headers.get("Set-Cookie")!);
 };
 
-async function authorizePayments(headers: Headers) {
-  const payoutRes = await fetch(
-    "https://portal.simpleko.se/api/portal/payouts",
+async function authorizeInvoices(headers: Headers) {
+  console.log("authorizing invoices");
+  const invoiceRes = await fetch(
+    "https://portal.simpleko.se/api/portal/invoices",
     {
       headers,
     },
-  ).then((it) => it.json());
+  );
+  const invoiceBody = await assertResponse(invoiceRes);
+  type Invoice = {
+    id: number;
+    InvoiceDate: string;
+    InvoiceNo: string;
+    companyName: string;
+    paymentReceiverComment: any;
+    DueDate: string;
+    TotalInclTax: string;
+    authorizeAmount: any;
+    Currency: string;
+    userHasAuthorizedInvoice: any;
+    partiallyAuthorized: string;
+    invoiceStatus: string;
+    statusOrder: string;
+    payableDimensions: any;
+    authorizedBy: AuthorizedBy[];
+    applicableAuthRules: any;
+    deliveryApproval: any;
+  };
 
-  const payoutsToAuthorize = payoutRes.data.payouts.filter(
+  type AuthorizedBy = {
+    userId: number;
+    userName: string;
+  };
+  const invoices: Invoice[] = invoiceBody.data;
+  const invoicesToAuthorize = invoices.filter(
+    (it) => it.partiallyAuthorized === "true",
+  );
+  console.log("Authorizing", invoicesToAuthorize.length, "invoices");
+  console.log(invoicesToAuthorize.length, "invoices authorized");
+}
+
+async function authorizePayments(headers: Headers) {
+  console.log("Authorizing payments");
+  const payoutRes = await fetch(
+    "https://portal.simpleko.se/api/portal/payouts",
+    { headers },
+  );
+
+  const payoutResBody = await assertResponse(payoutRes);
+
+  const payoutsToAuthorize = payoutResBody.data.payouts.filter(
     (it) => it.authorized === "partial" || it.authorized === "false",
   );
 
@@ -167,9 +212,16 @@ async function authorizeSalaries(headers: Headers) {
 }
 
 const sessionId = await getSessionid();
-const headers = createHeaders(sessionId);
+const preLoginHeaders = createHeaders(`PHPSESSID=${sessionId}`);
 
-await authenticate(headers);
-await authorizePayments(headers);
-await authorizeSalaries(headers);
+try {
+  const headers = await authenticate(preLoginHeaders);
+  console.log(Object.entries(headers.entries()));
+  await authorizePayments(headers);
+  await authorizeSalaries(headers);
+  await authorizeInvoices(headers);
+} catch (e) {
+  console.error(e);
+  throw e;
+}
 console.log("finished! :) ");

@@ -49,7 +49,7 @@ resource "kubernetes_cron_job_v1" "cron_job" {
 
 
   spec {
-    schedule = "* */5 * * *"
+    schedule = "33 18 */2 * *"
     job_template {
       metadata {
         name = local.name
